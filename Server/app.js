@@ -1,15 +1,14 @@
 let express = require('express')
-let bodyParser = require('body-parser')
 let fs = require('fs')
 let cors = require('cors')
 
 const app = express()
-let jsonParser = bodyParser.json()
 
 let notes
 let note
-
+app.use(express.json())
 app.use(cors())
+
 app.get('/notes', function (req, res) {
     loadingDataNotes()
     res.send(notes)
@@ -25,22 +24,24 @@ app.get('/notes/:id', function (req, res) {
     }
 })
 
-app.post('/notes', jsonParser, function (req, res) {
+app.post('/notes', function (req, res) {
+    console.log('req.body', req.body);
     if (!req.body) {
         return res.sendStatus(400)
     }
     loadingDataNotes()
+
     note = {
         id: notes.reduce((max, item) => item.id > max ? item.id : max, 0) + 1,
         body: req.body.body,
-        status: req.body.status,
+        status: false,
         dateCreation: new Date(),
     }
-    notes.push(note)
+    notes.unshift(note)
     fs.writeFileSync('data.json', JSON.stringify(notes))
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'origin, content-type, accept');
-    res.send(note)
+    res.send(notes)
 })
 
 app.delete('/notes/:id', function (req, res) {
@@ -49,13 +50,13 @@ app.delete('/notes/:id', function (req, res) {
     if (note) {
         note = notes.splice(notes.indexOf(note), 1)[0]
         fs.writeFileSync('data.json', JSON.stringify(notes))
-        res.send(note)
+        res.send(notes)
     } else {
         res.status(404).send()
     }
 })
 
-app.put('/notes', jsonParser, function (req, res) {
+app.put('/notes', function (req, res) {
     if (!req.body) return res.sendStatus(400)
     loadingDataNotes(note, notes)
     note = receiveIdNote(note, notes, req.body.id)
@@ -64,9 +65,9 @@ app.put('/notes', jsonParser, function (req, res) {
         note.body = req.body.body
         note.dateCreation = new Date();
         fs.writeFileSync('data.json', JSON.stringify(notes))
-        res.send(note)
+        res.send(notes)
     } else {
-        res.status(404).send(note)
+        res.status(404).send(notes)
     }
 })
 
