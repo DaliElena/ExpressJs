@@ -1,26 +1,35 @@
 <template>
-  <div>
-    <div class="elements">
-      <textarea type="text" @keyup.enter="addNote" v-model="newNote.body" placeholder="Введите заметку"
-                class="swal2-input"></textarea>
-      <!--      <input type="text" @keyup.enter="addNote" v-model="newNote.body" placeholder="Введите заметку">-->
-      <button @click="addNote" class="btn btn-add">Добавить заметку</button>
-    </div>
-    <div class="container">
-      <div class="note-card" v-for="note in notes" :key="note.id">
-        <div class="card-header">
-          <div class="card-header__title">{{ format(new Date(note.dateCreation), 'eeee', {locale: dateLocale}) }}</div>
-          <div class="card-header__subtitle">
-            {{ format(new Date(note.dateCreation), 'd MMMM, yyyy', {locale: dateLocale}) }}
+  <div class="main-block">
+    <div>
+      <div class="elements">
+      <textarea type="text"
+                @keyup.enter="addNote"
+                v-model="newNote.body"
+                placeholder="Введите заметку"
+      >
+      </textarea>
+        <!--      <input type="text" @keyup.enter="addNote" v-model="newNote.body" placeholder="Введите заметку">-->
+        <button @click="addNote" class="btn btn-add">Добавить заметку</button>
+      </div>
+      <div class="container">
+        <div class="note-card" v-for="note in notes" :key="note.id">
+          <div class="card-header">
+            <div class="card-header__title">{{
+                format(new Date(note.dateCreation), 'eeee', {locale: dateLocale})
+              }}
+            </div>
+            <div class="card-header__subtitle">
+              {{ format(new Date(note.dateCreation), 'd MMMM, yyyy', {locale: dateLocale}) }}
+            </div>
           </div>
-        </div>
-        <div class="card-body">
-          <textarea type="text" :disabled="!note.isEditable" v-model="note.body" class="body-text"></textarea>
-          <div class="card-button">
-            <input type="checkbox" :checked="note.status" v-model="note.status" @change="updateNote(note)">
-            <button v-if="!note.isEditable" @click="note.isEditable=true" class="btn btn-edit">Редактировать</button>
-            <button v-else @click="updateNote(note)" class="btn btn-save">Сохранить</button>
-            <button @click="removeNote(note.id)" class="btn btn-delete">Удалить</button>
+          <div class="card-body">
+            <textarea type="text" :disabled="!note.isEditable" v-model="note.body" class="body-text"></textarea>
+            <div class="card-button">
+              <input type="checkbox" :checked="note.status" v-model="note.status" @change="updateNote(note)">
+              <button v-if="!note.isEditable" @click="note.isEditable=true" class="btn btn-edit">Редактировать</button>
+              <button v-else @click="updateNote(note)" class="btn btn-save">Сохранить</button>
+              <button @click="removeNote(note.id)" class="btn btn-delete">Удалить</button>
+            </div>
           </div>
         </div>
       </div>
@@ -32,6 +41,7 @@
 import {format} from 'date-fns';
 import {ru} from 'date-fns/locale';
 import Swal from 'sweetalert2';
+import {checkToken} from '@/core/helpers/checkToken';
 
 export default {
   name: 'Home',
@@ -56,12 +66,18 @@ export default {
   created() {
   },
 
-  mounted() {
+  async mounted() {
+
+    const myHeaders = new Headers();
+    myHeaders.append('Authorization', `Bearer ${localStorage.getItem('token')}`);
+
     const requestOptions = {
       method: 'GET',
+      headers: myHeaders,
       redirect: 'follow',
     };
-    fetch('http://localhost:5000/notes', requestOptions)
+
+    fetch(`${process.env.VUE_APP_ROOT_API}/notes`, requestOptions)
         .then(response => response.text())
         .then(response => {
           const notes = JSON.parse(response);
@@ -76,11 +92,17 @@ export default {
 
   methods: {
     format,
-    removeNote(id) {
+    async removeNote(id) {
+      const myHeaders = new Headers();
+      myHeaders.append('Authorization', `Bearer ${localStorage.getItem('token')}`);
+
       const requestOptions = {
         method: 'DELETE',
+        headers: myHeaders,
         redirect: 'follow',
       };
+
+      await checkToken();
       fetch(`http://localhost:5000/notes/${id}`, requestOptions)
           .then(response => response.text())
           .then(response => {
@@ -107,17 +129,20 @@ export default {
           });
 
     },
-    addNote() {
+    async addNote() {
       if (this.newNote.body) {
         const myHeaders = new Headers();
         myHeaders.append('Content-Type', 'application/json');
         const raw = JSON.stringify(this.newNote);
+        myHeaders.append('Authorization', `Bearer ${localStorage.getItem('token')}`);
         const requestOptions = {
           method: 'POST',
           headers: myHeaders,
           body: raw,
           redirect: 'follow',
         };
+
+        await checkToken();
         fetch('http://localhost:5000/notes', requestOptions)
             .then(response => response.text())
             .then(response => {
@@ -137,10 +162,11 @@ export default {
         });
       }
     },
-    updateNote(modifiedNote) {
+    async updateNote(modifiedNote) {
       if (modifiedNote.body) {
         const myHeaders = new Headers();
         myHeaders.append('Content-Type', 'application/json');
+        myHeaders.append('Authorization', `Bearer ${localStorage.getItem('token')}`);
         const raw = JSON.stringify(modifiedNote);
         const requestOptions = {
           method: 'PUT',
@@ -148,6 +174,7 @@ export default {
           body: raw,
           redirect: 'follow',
         };
+        await checkToken();
         fetch('http://localhost:5000/notes', requestOptions)
             .then(response => response.text())
             .then(response => {
@@ -180,6 +207,15 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.main-block {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  background-color: #f7f8fc;
+  font-family: "Roboto", sans-serif;
+  color: #10182f;
+  height: 100vh;
+}
 
 .container {
   display: flex;
@@ -282,7 +318,7 @@ export default {
   border: none;
   overflow: auto;
   outline: none;
-  width: 450px;
+  width: 100%;
   height: 120px;
 }
 
